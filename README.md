@@ -25,7 +25,6 @@ FFmpeg와 yt-dlp를 사용하며, 대기열 기능, 재생/일시정지/다음�
 
     ```
     git clone https://github.com/yourusername/Discord-MusicBot.git
-
     cd Discord-MusicBot
     ```
 
@@ -35,14 +34,6 @@ FFmpeg와 yt-dlp를 사용하며, 대기열 기능, 재생/일시정지/다음�
     python3 -m venv venv
     source venv/bin/activate
     pip install -r requirements.txt
-    ```
-
-    📌 requirements.txt 파일
-
-    ```txt
-    discord.py
-    yt-dlp
-    python-dotenv
     ```
 
 3.  .env 파일 수정
