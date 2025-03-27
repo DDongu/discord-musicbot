@@ -1,6 +1,4 @@
 #!/bin/zsh
-
-cd ~/projects/Discord-MusicBot  # 봇 디렉토리로 이동
 source venv/bin/activate
 
 # 현재 디렉토리에 log 저장하고 백그라운드 실행
