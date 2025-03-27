@@ -62,9 +62,7 @@ FFmpeg와 yt-dlp를 사용하며, 대기열 기능, 재생/일시정지/다음�
 5.  봇 중지
 
     ```
-    kill $(grep "Discord Music Bot started with PID" bot.log | tail -1 | awk '{print $NF}')
-
-    또는 ps aux | grep music_bot.py 로 PID 확인 후 kill `<PID>`
+    ./terminate_bot.sh
     ```
 
 ---
