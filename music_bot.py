@@ -91,6 +91,11 @@ def play_next(ctx):
 async def play(ctx, *, search: str):
     if not ctx.voice_client:
         await ctx.invoke(bot.get_command("join"))
+    
+    # 연결이 완료되었는지 확인
+    if not ctx.voice_client or not ctx.voice_client.is_connected():
+        await ctx.send("❌ 음성 채널에 연결되지 않았어요. 잠시 후 다시 시도해주세요.")
+        return
 
     # 공통 yt_dlp 옵션
     ydl_opts = {
