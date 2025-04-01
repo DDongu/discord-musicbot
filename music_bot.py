@@ -10,7 +10,6 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents, help_command=None)
 
-# 대기열에는 (search_query, title)를 저장함.
 queue = deque()
 now_playing = {"title": None, "url": None}
 
@@ -35,7 +34,7 @@ async def join(ctx):
     else:
         await ctx.send("🎙 음성 채널에 먼저 들어가 있어야 해요!")
 
-@bot.command()  # leave는 약어 없음
+@bot.command()
 async def leave(ctx):
     if ctx.voice_client:
         await ctx.voice_client.disconnect()
@@ -45,27 +44,26 @@ async def leave(ctx):
 
 def play_next(ctx):
     if queue:
-        # 대기열에서 검색어와 제목을 꺼내옴.
         search_query, title = queue.popleft()
 
-        # 최신 URL을 받기 위해 새로 yt_dlp로 정보 추출
         ydl_opts = {
-            'format': 'bestaudio/best',
+            'format': 'bestaudio[ext=m4a]/bestaudio/best',  # m4a 형식 우선
             'quiet': True,
             'default_search': 'ytsearch',
             'socket_timeout': 10,
             'retries': 2,
             'nocheckcertificate': True,
             'noprogress': True,
-            'source_address': '0.0.0.0'
+            'source_address': '0.0.0.0',
+            'geo_bypass': True  # 지역 제한 우회
         }
+
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             try:
                 info = ydl.extract_info(search_query, download=False)
                 if 'entries' in info:
                     info = info['entries'][0]
             except Exception:
-                # 오류 발생 시 대기열에서 해당 곡을 건너뛰고 재생 시도
                 asyncio.run_coroutine_threadsafe(ctx.send(f"❌ '{title}'의 최신 URL을 받아오지 못했어요."), bot.loop)
                 play_next(ctx)
                 return
@@ -77,7 +75,8 @@ def play_next(ctx):
         ctx.voice_client.play(
             discord.FFmpegPCMAudio(
                 audio_url,
-                before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -protocol_whitelist file,http,https,tcp,tls"
+                before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -protocol_whitelist file,http,https,tcp,tls",
+                options="-vn -b:a 192k -bufsize 64k -ar 48000 -ac 2"
             ),
             after=lambda e: play_next(ctx)
         )
@@ -92,12 +91,10 @@ async def play(ctx, *, search: str):
     if not ctx.voice_client:
         await ctx.invoke(bot.get_command("join"))
     
-    # 연결이 완료되었는지 확인
     if not ctx.voice_client or not ctx.voice_client.is_connected():
         await ctx.send("❌ 음성 채널에 연결되지 않았어요. 잠시 후 다시 시도해주세요.")
         return
 
-    # 공통 yt_dlp 옵션
     ydl_opts = {
         'format': 'bestaudio/best',
         'quiet': True,
@@ -118,7 +115,6 @@ async def play(ctx, *, search: str):
             await ctx.send("❌ 유튜브에서 정보를 불러오는 데 실패했어요.")
             return
 
-        # 즉시 재생할 때 사용될 URL (현재 fresh URL)
         audio_url = info['url']
         title = info.get('title', 'Unknown Title')
         webpage_url = info.get('webpage_url', '링크 없음')
@@ -129,13 +125,13 @@ async def play(ctx, *, search: str):
         ctx.voice_client.play(
             discord.FFmpegPCMAudio(
                 audio_url,
-                before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -protocol_whitelist file,http,https,tcp,tls"
+                before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -protocol_whitelist file,http,https,tcp,tls",
+                options="-vn -b:a 192k -bufsize 64k -ar 48000 -ac 2"
             ),
             after=lambda e: play_next(ctx)
         )
         await ctx.send(f"▶️ 재생 중: **{title}**")
     else:
-        # 대기열에는 원본 검색어(또는 링크)와 제목을 저장함.
         queue.append((search, title))
         await ctx.send(f"⏱ 큐에 추가됨: **{title}**")
 
@@ -209,19 +205,18 @@ async def help(ctx):
     help_text = """
 🎵 **사용 가능한 명령어 목록 (약어 포함):**
 
-`!play <제목/링크>` or `!p` - 노래 재생 (즉시 재생 또는 대기열에 추가; 대기열은 fresh URL로 재생됨)
-`!pause` or `!ps` - 일시정지
-`!resume` or `!r` - 다시 재생
-`!skip` or `!s` - 다음 곡
-`!list` or `!l` - 재생 목록 보기 (대기열에 저장된 검색어 기준)
-`!now` - 현재 재생 중인 곡 확인
-`!join` or `!j` - 봇 음성 채널에 초대
-`!leave` - 봇 음성 채널에서 퇴장
-`!search <제목>` - 유튜브에서 검색 (상위 5개 링크 출력)
-`!help` - 이 도움말 보기
+!play <제목/링크> or !p - 노래 재생 (즉시 재생 또는 대기열에 추가; 대기열은 fresh URL로 재생됨)
+!pause or !ps - 일시정지
+!resume or !r - 다시 재생
+!skip or !s - 다음 곡
+!list or !l - 재생 목록 보기 (대기열에 저장된 검색어 기준)
+!now - 현재 재생 중인 곡 확인
+!join or !j - 봇 음성 채널에 초대
+!leave - 봇 음성 채널에서 퇴장
+!search <제목> - 유튜브에서 검색 (상위 5개 링크 출력)
+!help - 이 도움말 보기
 """
     await ctx.send(help_text)
-
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
