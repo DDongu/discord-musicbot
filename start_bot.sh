@@ -1,5 +1,6 @@
 #!/bin/zsh
 source venv/bin/activate
+pip install -U yt-dlp
 
 # 현재 디렉토리에 log 저장하고 백그라운드 실행
 nohup python3 music_bot.py > bot.log 2>&1 &
