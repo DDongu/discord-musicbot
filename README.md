@@ -31,6 +31,8 @@ FFmpeg와 yt-dlp를 사용하며, 대기열 기능, 재생/일시정지/다음�
 2.  가상환경 및 패키지 설치
 
     ```
+    sudo apt update
+    sudo apt install -y python3.12-venv
     python3 -m venv venv
     source venv/bin/activate
     pip install -r requirements.txt
