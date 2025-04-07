@@ -1,12 +1,9 @@
 #!/bin/bash
+source venv/bin/activate
+pip install -U yt-dlp
 
-# music_bot.py 실행 중인 프로세스 찾기
-PID=$(ps aux | grep music_bot.py | grep -v grep | awk '{print $2}')
+# 현재 디렉토리에 log 저장하고 백그라운드 실행
+nohup python3 music_bot.py > bot.log 2>&1 &
 
-if [ -z "$PID" ]; then
-  echo "❌ 실행 중인 봇 프로세스를 찾을 수 없어요."
-else
-  echo "🛑 봇 프로세스 종료 중... (PID: $PID)"
-  kill -9 "$PID"
-  echo "✅ 봇이 성공적으로 종료되었습니다."
-fi
+# 백그라운드 PID 저장
+echo "✅ 봇이 백그라운드에서 실행 중입니다. 로그: ./bot.log"
