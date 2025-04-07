@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/bin/sh
 source venv/bin/activate
 pip install -U yt-dlp
 
