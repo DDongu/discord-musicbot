@@ -42,29 +42,37 @@ async def leave(ctx):
         now_playing["title"] = None
         now_playing["url"] = None
 
+def get_ydl_opts():
+    return {
+        'format': 'bestaudio[ext=m4a]/bestaudio[acodec=opus]/bestaudio/best',
+        'quiet': True,
+        'default_search': 'ytsearch',
+        'socket_timeout': 10,
+        'retries': 3,
+        'nocheckcertificate': True,
+        'noprogress': True,
+        'geo_bypass': True,
+        'source_address': '0.0.0.0',
+    }
+
+def get_ffmpeg_opts():
+    return {
+        'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+        'options': '-vn -b:a 192k -bufsize 128k -ar 48000 -ac 2'
+    }
+
 def play_next(ctx):
     if queue:
         search_query, title = queue.popleft()
-
-        ydl_opts = {
-            'format': 'bestaudio[ext=m4a]/bestaudio/best',  # m4a 형식 우선
-            'quiet': True,
-            'default_search': 'ytsearch',
-            'socket_timeout': 10,
-            'retries': 2,
-            'nocheckcertificate': True,
-            'noprogress': True,
-            'source_address': '0.0.0.0',
-            'geo_bypass': True  # 지역 제한 우회
-        }
-
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        with yt_dlp.YoutubeDL(get_ydl_opts()) as ydl:
             try:
                 info = ydl.extract_info(search_query, download=False)
                 if 'entries' in info:
                     info = info['entries'][0]
             except Exception:
-                asyncio.run_coroutine_threadsafe(ctx.send(f"❌ '{title}'의 최신 URL을 받아오지 못했어요."), bot.loop)
+                asyncio.run_coroutine_threadsafe(
+                    ctx.send(f"❌ '{title}'의 최신 URL을 받아오지 못했어요."), bot.loop
+                )
                 play_next(ctx)
                 return
 
@@ -73,11 +81,7 @@ def play_next(ctx):
             now_playing["url"] = info.get("webpage_url", "링크 없음")
 
         ctx.voice_client.play(
-            discord.FFmpegPCMAudio(
-                audio_url,
-                before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -protocol_whitelist file,http,https,tcp,tls",
-                options="-vn -b:a 192k -bufsize 64k -ar 48000 -ac 2"
-            ),
+            discord.FFmpegPCMAudio(audio_url, **get_ffmpeg_opts()),
             after=lambda e: play_next(ctx)
         )
         coro = ctx.send(f"▶️ 다음 곡 재생 중: **{now_playing['title']}**")
@@ -90,23 +94,13 @@ def play_next(ctx):
 async def play(ctx, *, search: str):
     if not ctx.voice_client:
         await ctx.invoke(bot.get_command("join"))
-    
+        await asyncio.sleep(1)
+
     if not ctx.voice_client or not ctx.voice_client.is_connected():
         await ctx.send("❌ 음성 채널에 연결되지 않았어요. 잠시 후 다시 시도해주세요.")
         return
 
-    ydl_opts = {
-        'format': 'bestaudio/best',
-        'quiet': True,
-        'default_search': 'ytsearch',
-        'socket_timeout': 10,
-        'retries': 2,
-        'nocheckcertificate': True,
-        'noprogress': True,
-        'source_address': '0.0.0.0'
-    }
-
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+    with yt_dlp.YoutubeDL(get_ydl_opts()) as ydl:
         try:
             info = ydl.extract_info(search, download=False)
             if 'entries' in info:
@@ -123,11 +117,7 @@ async def play(ctx, *, search: str):
         now_playing["title"] = title
         now_playing["url"] = webpage_url
         ctx.voice_client.play(
-            discord.FFmpegPCMAudio(
-                audio_url,
-                before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -protocol_whitelist file,http,https,tcp,tls",
-                options="-vn -b:a 192k -bufsize 64k -ar 48000 -ac 2"
-            ),
+            discord.FFmpegPCMAudio(audio_url, **get_ffmpeg_opts()),
             after=lambda e: play_next(ctx)
         )
         await ctx.send(f"▶️ 재생 중: **{title}**")
@@ -174,18 +164,7 @@ async def search(ctx, *, search: str = None):
         await ctx.send("❌ 검색어를 입력해주세요. 예: `!search 아이유`")
         return
 
-    ydl_opts = {
-        'format': 'bestaudio/best',
-        'quiet': True,
-        'default_search': 'ytsearch',
-        'socket_timeout': 10,
-        'retries': 2,
-        'nocheckcertificate': True,
-        'noprogress': True,
-        'source_address': '0.0.0.0'
-    }
-
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+    with yt_dlp.YoutubeDL(get_ydl_opts()) as ydl:
         try:
             results = ydl.extract_info(f"ytsearch5:{search}", download=False)['entries']
         except Exception as e:
@@ -205,16 +184,16 @@ async def help(ctx):
     help_text = """
 🎵 **사용 가능한 명령어 목록 (약어 포함):**
 
-!play <제목/링크> or !p - 노래 재생 (즉시 재생 또는 대기열에 추가; 대기열은 fresh URL로 재생됨)
+!play <제목/링크> or !p - 노래 재생
 !pause or !ps - 일시정지
 !resume or !r - 다시 재생
 !skip or !s - 다음 곡
-!list or !l - 재생 목록 보기 (대기열에 저장된 검색어 기준)
-!now - 현재 재생 중인 곡 확인
-!join or !j - 봇 음성 채널에 초대
-!leave - 봇 음성 채널에서 퇴장
-!search <제목> - 유튜브에서 검색 (상위 5개 링크 출력)
-!help - 이 도움말 보기
+!list or !l - 재생 목록 보기
+!now - 현재 재생 곡 보기
+!join or !j - 음성 채널 참여
+!leave - 음성 채널 퇴장
+!search <제목> - 유튜브 검색
+!help - 도움말
 """
     await ctx.send(help_text)
 
