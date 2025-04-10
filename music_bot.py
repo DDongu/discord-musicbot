@@ -42,9 +42,10 @@ async def leave(ctx):
         now_playing["title"] = None
         now_playing["url"] = None
 
+# 🔧 yt-dlp 옵션 개선
 def get_ydl_opts():
     return {
-        'format': 'bestaudio[ext=m4a]/bestaudio[acodec=opus]/bestaudio/best',
+        'format': 'bestaudio/best',  # ✅ 가장 좋은 오디오 포맷 자동 선택
         'quiet': True,
         'default_search': 'ytsearch',
         'socket_timeout': 10,
@@ -55,10 +56,11 @@ def get_ydl_opts():
         'source_address': '0.0.0.0',
     }
 
+# 🔧 ffmpeg 음질/버퍼 최적화
 def get_ffmpeg_opts():
     return {
         'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-        'options': '-vn -b:a 192k -bufsize 128k -ar 48000 -ac 2'
+        'options': '-vn -ar 48000 -ac 2 -b:a 192k'  # ✅ 오디오 음질 및 안정화 옵션
     }
 
 def play_next(ctx):
@@ -81,7 +83,7 @@ def play_next(ctx):
             now_playing["url"] = info.get("webpage_url", "링크 없음")
 
         ctx.voice_client.play(
-            discord.FFmpegPCMAudio(audio_url, **get_ffmpeg_opts()),
+            discord.FFmpegPCMAudio(audio_url, **get_ffmpeg_opts()),  # 🔧 ffmpeg 음질 옵션 반영
             after=lambda e: play_next(ctx)
         )
         coro = ctx.send(f"▶️ 다음 곡 재생 중: **{now_playing['title']}**")
@@ -117,7 +119,7 @@ async def play(ctx, *, search: str):
         now_playing["title"] = title
         now_playing["url"] = webpage_url
         ctx.voice_client.play(
-            discord.FFmpegPCMAudio(audio_url, **get_ffmpeg_opts()),
+            discord.FFmpegPCMAudio(audio_url, **get_ffmpeg_opts()),  # 🔧 ffmpeg 음질 옵션 반영
             after=lambda e: play_next(ctx)
         )
         await ctx.send(f"▶️ 재생 중: **{title}**")
