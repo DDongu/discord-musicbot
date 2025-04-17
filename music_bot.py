@@ -259,6 +259,18 @@ async def cheer(ctx):
     except FileNotFoundError:
         await ctx.send("📁 `dev_cheers.txt` 파일을 찾을 수 없어요.")
 
+@bot.command(aliases=['cc'])
+async def cloud_cheer(ctx):
+    try:
+        with open("cloud_cheers.txt", "r", encoding="utf-8") as f:
+            lines = [line.strip() for line in f if line.strip()]
+            if lines:
+                await ctx.send(f"💻 {random.choice(lines)}")
+            else:
+                await ctx.send("⚠️ 응원 메시지가 아직 없어요. 파일을 채워주세요!")
+    except FileNotFoundError:
+        await ctx.send("📁 `cloud_cheers.txt` 파일을 찾을 수 없어요.")
+
 @bot.command()
 async def help(ctx):
     help_text = f"""
@@ -281,6 +293,7 @@ async def help(ctx):
 !dice - 1~999 중 랜덤 숫자 주사위 🎲  
 !rps <가위/바위/보> - 토래방이랑 가위바위보 ✊✌✋  
 !cheer - 응원 메시지
+!cc - 클라우드 응원 메시지
 
 📚 기타
 !help - 이 도움말 보기
